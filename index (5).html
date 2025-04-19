@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Warlord Ninja Clash</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      display: block;
+      background: #222; /* Dark background for dramatic effect */
+    }
+    #restartButton {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 10px 20px;
+      font-size: 20px;
+      color: white;
+      background-color: red;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #restartButton:hover {
+      background-color: darkred;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <button id="restartButton" onclick="restartGame()">Restart</button>
+  <script>
+    // Canvas setup
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Game variables
+    let keys = {};
+    let stars = [];
+    let obstacles = [];
+    let score = 0;
+    let gameSpeed = 3;
+    let gameOver = false;
+
+    // Warlord character
+    const player = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      width: 50,
+      height: 70,
+      color: '#c33', // Strong red
+      speed: 5,
+    };
+
+    // Event listeners for movement
+    document.addEventListener('keydown', (e) => {
+      keys[e.key] = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+      keys[e.key] = false;
+    });
+
+    // Movement logic
+    function movePlayer() {
+      if (keys['w']) player.y -= player.speed; // Move forward
+      if (keys['a']) player.x -= player.speed; // Move left
+      if (keys['s']) player.y += player.speed; // Move backward
+      if (keys['d']) player.x += player.speed; // Move right
+
+      // Keep player within canvas bounds
+      player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+      player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+    }
+
+    // Drawing the warlord
+    function drawPlayer() {
+      ctx.fillStyle = player.color;
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+      ctx.fillStyle = '#000'; // Black warlord headgear
+      ctx.fillRect(player.x + 10, player.y - 10, player.width - 20, 20); // Headgear design
+    }
+
+    // Drawing moving stars
+    function drawStars() {
+      stars.forEach((star, index) => {
+        ctx.fillStyle = 'yellow';
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Move stars around
+        star.x += Math.sin(star.direction) * 2;
+        star.y += Math.cos(star.direction) * 2;
+        star.direction += Math.random() * 0.2 - 0.1;
+
+        // Collision detection with player
+        if (
+          player.x < star.x + 15 &&
+          player.x + player.width > star.x - 15 &&
+          player.y < star.y + 15 &&
+          player.y + player.height > star.y - 15
+        ) {
+          stars.splice(index, 1);
+          score += 10;
+          console.log(`Score: ${score}`);
+          if (score % 50 === 0) gameSpeed += 1; // Increase speed every 50 points
+        }
+      });
+    }
+
+    // Drawing ninjas
+    function drawObstacles() {
+      obstacles.forEach((obstacle, index) => {
+        ctx.fillStyle = '#555'; // Ninja color
+        ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+        ctx.fillStyle = 'black'; // Ninja head
+        ctx.beginPath();
+        ctx.arc(obstacle.x + obstacle.width / 2, obstacle.y - 10, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Move ninjas
+        obstacle.x -= gameSpeed;
+
+        // Collision detection with player
+        if (
+          player.x < obstacle.x + obstacle.width &&
+          player.x + player.width > obstacle.x &&
+          player.y < obstacle.y + obstacle.height &&
+          player.y + player.height > obstacle.y
+        ) {
+          // End game
+          gameOver = true;
+          endGame();
+        }
+
+        // Remove off-screen ninjas
+        if (obstacle.x + obstacle.width < 0) {
+          obstacles.splice(index, 1);
+        }
+      });
+    }
+
+    // Spawning stars
+    function spawnStars() {
+      if (Math.random() < 0.02) {
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          direction: Math.random() * Math.PI * 2, // Random movement direction
+        });
+      }
+    }
+
+    // Spawning ninjas
+    function spawnObstacles() {
+      if (Math.random() < 0.02) {
+        obstacles.push({
+          x: canvas.width,
+          y: Math.random() * canvas.height,
+          width: 40,
+          height: 60,
+        });
+      }
+    }
+
+    // End game
+    function endGame() {
+      const restartButton = document.getElementById('restartButton');
+      restartButton.style.display = 'block';
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+      ctx.fillStyle = "white";
+      ctx.font = "30px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("YOU DIED MFKR! TRY AGAIN FOCUS >:D", canvas.width / 2, canvas.height / 2);
+    }
+
+    // Restart game
+    function restartGame() {
+      window.location.reload(); // Reload game
+    }
+
+    // Game loop
+    function gameLoop() {
+      if (!gameOver) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        drawPlayer();
+        drawStars();
+        drawObstacles();
+
+        spawnStars();
+        spawnObstacles();
+        movePlayer();
+
+        requestAnimationFrame(gameLoop);
+      }
+    }
+
+    // Start game
+    gameLoop();
+  </script>
+</body>
+</html>
